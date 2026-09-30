@@ -117,8 +117,10 @@ def execute(*, action: str, resource_type: str, resource_id: str,
         result = dict(handler(dict(args), creds))
     except Exception as e:
         log.exception("handler failed for %s", action)
+        # Full detail goes to Cloud Logging. The model — and anything it
+        # repeats to an anonymous caller — gets only the error type.
         return ({"executed": False, "decision": decision.decision.value,
-                 "error": f"{type(e).__name__}: {e}"[:400]}, decision)
+                 "error": type(e).__name__}, decision)
 
     result.update(executed=True, decision=decision.decision.value,
                   risk_score=decision.risk_score)
