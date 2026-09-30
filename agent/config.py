@@ -23,7 +23,7 @@ CONTROL_PLANE_URL = os.getenv("SM_CONTROL_PLANE_URL", "")
 CONTROL_PLANE_TIMEOUT_S = 10
 APPROVAL_POLL_INTERVAL_S = 2
 APPROVAL_TIMEOUT_S = 120
-
+DOCS_BUCKET = os.getenv("SM_DOCS_BUCKET", "sentinelmesh-target-docs")
 # --- External-destination simulator ---------------------------------------
 EXTERNAL_SINK_URL = os.getenv("SM_EXTERNAL_SINK_URL", "")
 
