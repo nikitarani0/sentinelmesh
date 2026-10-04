@@ -12,6 +12,7 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2 import id_token
 
 from policy import POLICY_VERSION, STATIC_EXPLANATIONS, Decision, evaluate
+from explain import explain
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("sentinelmesh")
@@ -48,15 +49,12 @@ def caller_email(authorization: str | None) -> str:
     raw = authorization.split(None, 1)[1].strip()
 
     try:
-        # Verify signature, issuer, expiry. Audience is checked below against
-        # the allowlist, because the claim is an exact string match.
         claims = id_token.verify_oauth2_token(raw, g_requests.Request(), audience=None)
     except Exception as exc:
         log.warning("token verification failed: %s", exc)
         raise HTTPException(status_code=401, detail="invalid token")
 
     if not EXPECTED_AUDIENCES:
-        # Fail closed: an empty allowlist would accept any Google token for any service.
         log.error("EXPECTED_AUDIENCE is not configured")
         raise HTTPException(status_code=500, detail="audience allowlist not configured")
 
@@ -124,7 +122,6 @@ async def decide(request: Request, authorization: str | None = Header(default=No
             body["access_token"] = token
             body["expires_at"] = expires_at
         except Exception as exc:
-            # Cannot mint -> cannot execute. Fail closed.
             log.error("token minting failed: %s", exc)
             body.update({
                 "decision": "DENY",
@@ -134,8 +131,20 @@ async def decide(request: Request, authorization: str | None = Header(default=No
             })
             body.pop("access_token", None)
 
+    # Gemini runs only now, after the decision is final.
+    body["explanation_source"] = "static"
+    ai_text = await explain(
+        decision=body["decision"],
+        rule_id=body["rule_id"],
+        static_reason=body["explanation"],
+        req=req,
+        signals=body["signals"],
+    )
+    if ai_text:
+        body["explanation"] = ai_text
+        body["explanation_source"] = "gemini"
+
     # One JSON line on stdout = one structured entry in Cloud Logging.
-    # The access token is deliberately never logged.
     print(json.dumps({
         "severity": "WARNING" if body["decision"] == "DENY" else "INFO",
         "message": f"{body['decision']} {req.get('action')} {body['rule_id']}",
@@ -152,10 +161,12 @@ async def decide(request: Request, authorization: str | None = Header(default=No
         "fired_rules": body["fired_rules"],
         "risk_score": body["risk_score"],
         "token_issued": "access_token" in body,
+        "explanation_source": body["explanation_source"],
         "policy_version": POLICY_VERSION,
         "latency_ms": round((time.monotonic() - started) * 1000, 1),
     }), flush=True)
     return JSONResponse(body)
+
 
 @app.get("/v1/approvals/{approval_id}")
 def get_approval(approval_id: str, authorization: str | None = Header(default=None)):
