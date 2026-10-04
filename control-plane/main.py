@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import logging
@@ -133,16 +134,28 @@ async def decide(request: Request, authorization: str | None = Header(default=No
             })
             body.pop("access_token", None)
 
-    log.info({
-        "trace_id": req.get("trace_id"), "request_id": request_id,
-        "agent_id": req.get("agent_id"), "caller": email,
-        "action": req.get("action"), "resource_id": req.get("resource_id"),
-        "decision": body["decision"], "rule_id": body["rule_id"],
-        "risk_score": body["risk_score"], "policy_version": POLICY_VERSION,
+    # One JSON line on stdout = one structured entry in Cloud Logging.
+    # The access token is deliberately never logged.
+    print(json.dumps({
+        "severity": "WARNING" if body["decision"] == "DENY" else "INFO",
+        "message": f"{body['decision']} {req.get('action')} {body['rule_id']}",
+        "event": "policy_decision",
+        "trace_id": req.get("trace_id"),
+        "request_id": request_id,
+        "agent_id": req.get("agent_id"),
+        "user_id": req.get("user_id"),
+        "caller": email,
+        "action": req.get("action"),
+        "resource_id": req.get("resource_id"),
+        "decision": body["decision"],
+        "rule_id": body["rule_id"],
+        "fired_rules": body["fired_rules"],
+        "risk_score": body["risk_score"],
+        "token_issued": "access_token" in body,
+        "policy_version": POLICY_VERSION,
         "latency_ms": round((time.monotonic() - started) * 1000, 1),
-    })
+    }), flush=True)
     return JSONResponse(body)
-
 
 @app.get("/v1/approvals/{approval_id}")
 def get_approval(approval_id: str, authorization: str | None = Header(default=None)):
