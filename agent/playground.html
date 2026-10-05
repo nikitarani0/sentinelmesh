@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SentinelMesh — Attack my agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Public+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef1f4; --surface: #ffffff; --ink: #18212c; --muted: #566273;
+    --line: #c8d0d9; --deny: #9e1b2a; --audit: #8a5a00; --allow: #0e6b57;
+    --approval: #3d4fa3; --none: #566273;
+    --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --stamp: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141a22; --surface: #1c242e; --ink: #e3e8ee; --muted: #9aa6b4;
+      --line: #334050; --deny: #ff7a85; --audit: #f0b84a; --allow: #5fd3b1;
+      --approval: #9fb0ff; --none: #9aa6b4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 400 1rem/1.55 var(--body); }
+  main { max-width: 60rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+  h1 { font-size: 2rem; line-height: 1.15; font-weight: 600; margin: 0 0 .75rem; }
+  h2 { font-size: 1.15rem; font-weight: 600; margin: 2.5rem 0 1rem; }
+  p { margin: 0 0 .75rem; max-width: 70ch; }
+  .lede { color: var(--muted); }
+  .status { font-size: .9rem; color: var(--muted); }
+  .status strong { color: var(--ink); }
+
+  .scenarios { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .scenarios li { display: grid; grid-template-columns: 1fr auto; gap: .5rem 1.5rem;
+                  align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+  .scenarios h3 { font-size: 1rem; margin: 0 0 .2rem; }
+  .scenarios p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  button { font: 600 .95rem var(--body); color: var(--surface); background: var(--ink);
+           border: 0; border-radius: 4px; padding: .6rem 1rem; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: progress; }
+  button:focus-visible, textarea:focus-visible { outline: 3px solid var(--approval); outline-offset: 2px; }
+
+  #result { margin-top: 1rem; }
+  .empty { color: var(--muted); }
+  .asked { background: var(--surface); border-left: 4px solid var(--ink);
+           padding: .9rem 1.1rem; margin: 0 0 1.5rem; }
+  .asked span { display: block; font-size: .85rem; color: var(--muted); }
+
+  .calls { list-style: none; margin: 0; padding: 0; counter-reset: call; }
+  .call { display: grid; grid-template-columns: 11rem 1fr; gap: 1.25rem;
+          padding: 1.1rem 0; border-top: 1px solid var(--line); }
+  .stamp { font: 700 1.9rem/1 var(--stamp); }
+  .stamp small { display: block; font: 400 .85rem var(--body); color: var(--muted); margin-top: .35rem; }
+  .deny .stamp { color: var(--deny); } .audit .stamp { color: var(--audit); }
+  .allow .stamp { color: var(--allow); } .approval .stamp { color: var(--approval); }
+  .none .stamp { color: var(--none); }
+  .call h3 { font-size: 1rem; margin: 0 0 .35rem; counter-increment: call; }
+  .call h3::before { content: counter(call) ". "; color: var(--muted); }
+  .target { overflow-wrap: anywhere; font-weight: 400; color: var(--muted); }
+  .purpose { margin: 0 0 .5rem; }
+  .purpose span { color: var(--muted); }
+  .reason { margin: .5rem 0 0; padding: .6rem .8rem; background: var(--surface);
+            border-left: 3px solid currentColor; }
+  .deny .reason { color: var(--deny); } .audit .reason { color: var(--audit); }
+  .reason, .ran { font-size: .92rem; }
+  .ran { color: var(--muted); margin: .4rem 0 0; }
+
+  .reply { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  .reply div { white-space: pre-wrap; max-width: 75ch; }
+  .error { color: var(--deny); }
+
+  textarea { width: 100%; min-height: 5rem; font: inherit; color: var(--ink);
+             background: var(--surface); border: 1px solid var(--line);
+             border-radius: 4px; padding: .7rem; margin-bottom: .75rem; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .call { animation: land .35s ease-out both; }
+    @keyframes land { from { opacity: 0; transform: translateY(6px); } }
+  }
+  @media (max-width: 40rem) {
+    .call, .scenarios li { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Attack my agent</h1>
+  <p class="lede">Each attack replaces the model with a script that behaves like a fully
+    compromised agent. The tools, the agent's identity and the control plane are the
+    production ones. The script chooses what the agent tries; the control plane decides
+    what happens.</p>
+  <p class="status" id="status">Checking the control plane…</p>
+
+  <h2>Run an attack</h2>
+  <ul class="scenarios" id="scenarios"></ul>
+
+  <h2>What happened</h2>
+  <section id="result" aria-live="polite">
+    <p class="empty">Run an attack to see each call the agent attempts and what the
+      control plane decided.</p>
+  </section>
+
+  <h2>Ask the agent normally</h2>
+  <p class="lede">Here Gemini plans the calls itself. Answers take around 20 seconds.</p>
+  <label for="prompt" class="status">Your request</label>
+  <textarea id="prompt">Look up transaction TX-1001 and tell me why it might be suspicious</textarea>
+  <button id="ask">Ask the agent</button>
+</main>
+
+<script>
+  const VERDICT = {
+    ALLOW: ["Allowed", "allow"], ALLOW_WITH_AUDIT: ["Allowed, audited", "audit"],
+    REQUIRE_APPROVAL: ["Needs approval", "approval"], DENY: ["Denied", "deny"],
+  };
+
+  // Every value from the server goes in through textContent. The agent's reply
+  // is model output, partly derived from untrusted documents; never innerHTML.
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function targetOf(args) {
+    if (args.destination_url) return args.destination_url;
+    if (args.object_path) return args.object_path;
+    if (args.dataset && args.table) return `${args.dataset}.${args.table}`;
+    return args.secret_id || "";
+  }
+
+  function renderCall(c) {
+    const [word, cls] = VERDICT[c.decision] || ["No decision", "none"];
+    const li = el("li", `call ${cls}`);
+
+    const stamp = el("div", "stamp", word);
+    if (c.risk_score != null) stamp.append(el("small", null, `Risk ${c.risk_score} / 100`));
+    li.append(stamp);
+
+    const body = el("div");
+    const h = el("h3", null, c.tool + " ");
+    h.append(el("span", "target", targetOf(c.args || {})));
+    body.append(h);
+
+    const purpose = (c.args || {}).declared_purpose;
+    if (purpose) {
+      const p = el("p", "purpose");
+      p.append(el("span", null, "Agent's stated purpose: "), document.createTextNode(purpose));
+      body.append(p);
+    }
+    if (c.reason) body.append(el("p", "reason", c.reason));
+
+    let ran = c.executed ? "Ran against enterprise data." : "Did not run.";
+    if (c.error) ran = `Did not complete: ${c.error}.`;
+    body.append(el("p", "ran", ran));
+
+    li.append(body);
+    return li;
+  }
+
+  function render(data) {
+    const out = document.getElementById("result");
+    out.replaceChildren();
+
+    const asked = el("div", "asked");
+    asked.append(el("span", null, "The user asked"), document.createTextNode(data.user_prompt));
+    out.append(asked);
+
+    const calls = data.tool_calls || [];
+    if (calls.length) {
+      const ol = el("ol", "calls");
+      calls.forEach((c, i) => {
+        const li = renderCall(c);
+        li.style.animationDelay = `${i * 180}ms`;
+        ol.append(li);
+      });
+      out.append(ol);
+    } else {
+      out.append(el("p", "empty", "The agent made no tool calls."));
+    }
+
+    if (data.answer) {
+      const reply = el("div", "reply");
+      reply.append(el("h3", null, "Agent's reply"), el("div", null, data.answer));
+      out.append(reply);
+    }
+    if (data.trace_id) out.append(el("p", "status", `Trace ${data.trace_id}`));
+  }
+
+  function setBusy(busy, message) {
+    document.querySelectorAll("button").forEach(b => (b.disabled = busy));
+    if (busy) {
+      const out = document.getElementById("result");
+      out.replaceChildren(el("p", "empty", message));
+    }
+  }
+
+  async function post(path, body, busyMessage) {
+    setBusy(true, busyMessage);
+    try {
+      const r = await fetch(path, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(`The request failed with HTTP ${r.status}. Check the service logs.`);
+      render(await r.json());
+    } catch (err) {
+      document.getElementById("result").replaceChildren(el("p", "error", err.message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function init() {
+    try {
+      const h = await (await fetch("/health")).json();
+      const s = document.getElementById("status");
+      s.replaceChildren(document.createTextNode("Control plane mode: "),
+                        el("strong", null, h.control_plane_mode),
+                        document.createTextNode(`. Agent: ${h.agent_id}.`));
+    } catch {
+      document.getElementById("status").textContent = "Could not reach the service.";
+    }
+
+    const list = document.getElementById("scenarios");
+    const scenarios = await (await fetch("/api/scenarios")).json();
+    for (const s of scenarios) {
+      const li = el("li");
+      const text = el("div");
+      text.append(el("h3", null, s.title), el("p", null, s.summary));
+      const btn = el("button", null, "Run attack");
+      btn.addEventListener("click", () =>
+        post("/v1/attack", { scenario: s.id }, `Running “${s.title}”…`));
+      li.append(text, btn);
+      list.append(li);
+    }
+
+    document.getElementById("ask").addEventListener("click", () => {
+      const prompt = document.getElementById("prompt").value.trim();
+      if (prompt) post("/v1/run", { prompt }, "The agent is working. This takes around 20 seconds…");
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
