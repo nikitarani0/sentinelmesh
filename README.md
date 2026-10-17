@@ -95,8 +95,3 @@ cd ../control-plane && pip install -r requirements.txt && pytest
 - Planned next: a human-in-the-loop approval queue, **Model Armor** screening of retrieved content, an agent permission graph, and governance of **MCP** tool calls and multi-agent delegation.
 
 All data in this project is synthetic.
-
-## Team VISN
-
-- **Nikita** — team lead, security architecture
-- **Ishan Joshi**
