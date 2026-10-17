@@ -7,7 +7,7 @@ Built by team **VISN** for the Google Cloud AI Builder Cup 2026 · Future of Wor
 | | |
 |---|---|
 | **Live prototype — Attack my agent** | https://sentinelmesh-agent-1035774079606.us-central1.run.app/ |
-| **Demo video (3 min)** | https://youtu.be/IheddZOME50 |
+| **Demo video** | https://youtu.be/IheddZOME50 |
 
 ---
 
