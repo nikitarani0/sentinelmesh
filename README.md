@@ -7,7 +7,7 @@ Built by team **VISN** for the Google Cloud AI Builder Cup 2026 · Future of Wor
 | | |
 |---|---|
 | **Live prototype — Attack my agent** | https://sentinelmesh-agent-1035774079606.us-central1.run.app/ |
-| **Demo video (3 min)** | https://youtu.be/IheddZOME50 |
+| **Demo video** | https://youtu.be/IheddZOME50 |
 
 ---
 
@@ -114,8 +114,3 @@ cd ../control-plane && pip install -r requirements.txt && pytest
 - Planned next: a human-in-the-loop approval queue, **Model Armor** screening of retrieved content, an agent permission graph, and governance of **MCP** tool calls and multi-agent delegation.
 
 All data in this project is synthetic.
-
-## Team VISN
-
-- **Nikita** — team lead, security architecture
-- **Ishan Joshi**
