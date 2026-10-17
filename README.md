@@ -20,7 +20,7 @@ AI agents now do real work: they query databases, read documents and call cloud 
 
 **The agent's own identity has zero data access.** A fully compromised agent cannot move data. With the control plane switched off, the same request returns `403 Forbidden`.
 
-![Architecture](docs/architecture.svg)
+![Architecture](docs/architecture.png)
 
 ## Results
 | Scenario | Outcome | Stopped by |
